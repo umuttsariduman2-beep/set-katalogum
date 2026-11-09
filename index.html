@@ -1,0 +1,93 @@
+
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#111111">
+<title>Set Kataloğum</title>
+<style>
+body{margin:0;padding:20px;background:#111;color:white;font-family:Arial}
+h1{color:#e5b94b}
+input,button{width:100%;padding:14px;margin:8px 0;border-radius:9px;box-sizing:border-box;font-size:16px}
+input{background:#252525;color:white;border:1px solid #555}
+button{background:#e5b94b;color:#111;border:0;font-weight:bold}
+.card{background:#252525;padding:12px;margin:14px 0;border-radius:12px}
+.card img{width:100%;max-height:300px;object-fit:contain}
+.card button{background:#713333;color:white}
+small{color:#bbb}
+</style>
+</head>
+<body>
+<h1>Set Kataloğum</h1>
+<p>Set fotoğraflarını referans numarasıyla kaydet.</p>
+
+<input id="ref" placeholder="Set referans numarası">
+<input id="photo" type="file" accept="image/*" capture="environment">
+<button onclick="saveSet()">FOTOĞRAFI KAYDET</button>
+
+<hr>
+<input id="search" placeholder="Referans numarasıyla ara" oninput="showSets()">
+<div id="list"></div>
+
+<script>
+let db;
+const request=indexedDB.open("SetKatalogum",1);
+request.onupgradeneeded=e=>{
+ e.target.result.createObjectStore("sets",{keyPath:"ref"});
+};
+request.onsuccess=e=>{
+ db=e.target.result;
+ showSets();
+};
+
+function saveSet(){
+ const ref=document.getElementById("ref").value.trim();
+ const file=document.getElementById("photo").files[0];
+ if(!ref||!file){alert("Referans numarası ve fotoğraf gerekli.");return;}
+ const reader=new FileReader();
+ reader.onload=()=>{
+  const tx=db.transaction("sets","readwrite");
+  tx.objectStore("sets").put({ref,image:reader.result});
+  tx.oncomplete=()=>{
+   alert("Set kaydedildi.");
+   document.getElementById("ref").value="";
+   document.getElementById("photo").value="";
+   showSets();
+  };
+ };
+ reader.readAsDataURL(file);
+}
+
+function showSets(){
+ if(!db)return;
+ const q=document.getElementById("search").value.toLowerCase();
+ const list=document.getElementById("list");
+ list.innerHTML="";
+ const tx=db.transaction("sets","readonly");
+ const req=tx.objectStore("sets").getAll();
+ req.onsuccess=()=>{
+  req.result.filter(x=>x.ref.toLowerCase().includes(q))
+  .forEach(x=>{
+   const card=document.createElement("div");
+   card.className="card";
+   const title=document.createElement("h3");
+   title.textContent=x.ref;
+   const img=document.createElement("img");
+   img.src=x.image;
+   const del=document.createElement("button");
+   del.textContent="BU SETİ SİL";
+   del.onclick=()=>{
+    if(confirm(x.ref+" silinsin mi?")){
+     db.transaction("sets","readwrite").objectStore("sets").delete(x.ref);
+     setTimeout(showSets,100);
+    }
+   };
+   card.append(title,img,del);
+   list.append(card);
+  });
+ };
+}
+</script>
+</body>
+</html>
