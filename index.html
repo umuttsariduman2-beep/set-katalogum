@@ -89,5 +89,78 @@ function showSets(){
  };
 }
 </script>
-</body>
+<div style="margin-top:25px;padding:15px;background:#222;color:white;border-radius:10px;">
+  <h3>SET KATALOĞUM YEDEKLEME</h3>
+
+  <button onclick="backupSets()" style="padding:12px;width:100%;margin-bottom:10px;">
+    YEDEK OLUŞTUR
+  </button>
+
+  <button onclick="document.getElementById('backupFile').click()" style="padding:12px;width:100%;">
+    YEDEKTEN GERİ YÜKLE
+  </button>
+
+  <input type="file" id="backupFile" accept=".json,application/json" style="display:none" onchange="restoreSets(event)">
+</div>
+
+<script>
+function backupSets(){
+ const request=indexedDB.open("SetKatalogum");
+ request.onsuccess=()=>{
+  const db=request.result;
+  const tx=db.transaction("sets","readonly");
+  const store=tx.objectStore("sets");
+  const get=store.getAll();
+
+  get.onsuccess=()=>{
+   const data=JSON.stringify(get.result);
+   const blob=new Blob([data],{type:"application/json"});
+   const url=URL.createObjectURL(blob);
+   const a=document.createElement("a");
+   a.href=url;
+   a.download="set-katalogum-yedek.json";
+   a.click();
+   URL.revokeObjectURL(url);
+   alert("Yedek dosyan hazır!");
+  };
+ };
+}
+
+function restoreSets(event){
+ const file=event.target.files[0];
+ if(!file)return;
+
+ const reader=new FileReader();
+ reader.onload=()=>{
+  try{
+   const data=JSON.parse(reader.result);
+   if(!Array.isArray(data))throw new Error();
+
+   if(!confirm("Yedekteki kayıtlar mevcut kayıtlarla birleştirilecek. Devam edilsin mi?"))return;
+
+   const request=indexedDB.open("SetKatalogum");
+   request.onsuccess=()=>{
+    const db=request.result;
+    const tx=db.transaction("sets","readwrite");
+    const store=tx.objectStore("sets");
+
+    data.forEach(item=>{
+     if(item.ref && item.image){
+      store.put(item);
+     }
+    });
+
+    tx.oncomplete=()=>{
+     alert("Yedek başarıyla geri yüklendi!");
+     location.reload();
+    };
+    tx.onerror=()=>alert("Yedek yüklenemedi!");
+   };
+  }catch(e){
+   alert("Geçersiz yedek dosyası!");
+  }
+ };
+ reader.readAsText(file);
+}
+</script></body>
 </html>
