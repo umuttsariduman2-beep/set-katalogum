@@ -1,5 +1,5 @@
 
-const CACHE_NAME = "set-katalogum-v1";
+const CACHE_NAME = "set-katalogum-v2";
 
 const FILES = [
   "./",
